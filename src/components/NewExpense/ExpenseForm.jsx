@@ -1,157 +1,142 @@
-import { useState } from 'react'
-// import styles from './ExpenseForm.module.css'
-import styled from 'styled-components'
+import { useState, useRef } from "react";
+import Modal from "../UI/Modal";
+import styles from "./ExpenseForm.module.css";
 
-const FormControls = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  margin-bottom: 1rem;
-  text-align: left;
-`
-const FormControl = styled.div`
-  & label {
-    font-weight: bold;
-    margin-bottom: 0.5rem;
-    display: block;
-    color: ${(props) => (props.invalid ? '#AD0000' : '#000000')}
-  }
-
-  & input {
-    background-color: white;
-    font: inherit;
-    padding: 0.5rem;
-    border-radius: 6px;
-    border: 1px solid ${({ invalid }) => (invalid ? '#AD0000' : '#000000')};
-    width: 20rem;
-    max-width: 100%;
-  }
-`
-
-const FormActions = styled.div`
-  text-align: right;
-`
-
-const Button = styled.button`
-  font: inherit;
-  cursor: pointer;
-  padding: 0.5rem 1rem;
-  border: 1px solid #464646;
-  background-color: #464646;
-  color: #e5e5e5;
-  border-radius: 12px;
-  margin-right: 1rem;
-
-  &:hover,
-  &:active {
-    background-color: #AFAFAF;
-    border-color: #AFAFAF;
-    color: black;
-  }
-
-  @media (max-width: 768px) {
-    width: 100%;
-  }
-`
-
-const ExpenseForm = ({ onSaveExpense }) => {
+function ExpenseForm(props) {
   const [title, setTitle] = useState("");
   const [amount, setAmount] = useState("");
   const [date, setDate] = useState("");
-  const [isValidTitle, setIsValidTitle] = useState(true)
-  const [isValidAmount, setIsValidAmount] = useState(true)
-  const [isValidDate, setIsValidDate] = useState(true)
+  const [isTitleValid, setIsTitleValid] = useState(true);
+  const [isAmountValid, setIsAmountValid] = useState(true);
+  const [isDateValid, setIsDateValid] = useState(true);
+  const [error, setIsError] = useState(null)
+
+  const titleRef = useRef(null)
+  const amountRef = useRef(null)
 
   const titleChangeHandler = (event) => {
-    const { value } = event.target
-    if (value.length) setIsValidTitle(true)
+    const { value } = event.target;
+    if (value.length > 0) setIsTitleValid(true);
     setTitle(value);
   };
 
   const amountChangeHandler = (event) => {
-    const { value } = event.target
-    if (value.length) setIsValidAmount(true)
+    const { value } = event.target;
+    if (value.length > 0) setIsAmountValid(true);
     setAmount(value);
   };
 
   const dateChangeHandler = (event) => {
-    const { value } = event.target
-    console.log('value', value)
-    if (value.length) setIsValidDate(true)
+    const { value } = event.target;
+    if (value.length > 0) setIsDateValid(true);
+    if (new Date(value) > new Date()) {
+      setIsDateValid(false)
+      setIsError({
+        title: 'Fecha inválida',
+        message: `La fecha no debe ser mayor a ${new Date().toLocaleDateString()}`
+      })
+    }
     setDate(value);
   };
 
-  const validateFields = () => {
-    if (!title.trim().length) {
-      setIsValidTitle(false)
-    }
-    if (amount.trim().length === 0) {
-      setIsValidAmount(false)
-    }
-    if (date.trim().length === 0) {
-      console.log('date', date.length)
-      // pendiente de validar correctamente
-      setIsValidDate(false)
-    }
-  }
-
   const submitHandler = (event) => {
     event.preventDefault();
-    const isReadyToSubmit = isValidTitle && isValidAmount && isValidDate
-    validateFields()
-    if(isReadyToSubmit) {
-      const expense = {
-        title,
-        amount,
-        date: new Date(date),
-      };
 
-      onSaveExpense(expense);
+    validateFields();
+    if (!(isTitleValid && isAmountValid && isDateValid)) return;
 
-      setTitle("");
-      setAmount("");
-      setDate("");
+    const expense = {
+      title,
+      amount,
+      date: new Date(date),
+    };
+
+    props.onSaveExpense(expense);
+
+    setTitle("");
+    setAmount("");
+    setDate("");
+  };
+
+  const validateFields = () => {
+    if (title.trim().length === 0) {
+      setIsTitleValid(false)
+      titleRef.current.focus()
+    }
+
+    if (amount.trim().length === 0) {
+      setIsAmountValid(false);
+      amountRef.current.focus()
+    }
+
+    if (date.trim().length === 0) {
+      setIsDateValid(false);
     }
   };
 
-  return (
-    <form onSubmit={submitHandler}>
-      <FormControls>
-        <FormControl invalid={!isValidTitle}>
-          <label>Descripción</label>
-          <input
-            type="text"
-            onChange={titleChangeHandler}
-            value={title}
-          />
-        </FormControl>
-        <FormControl invalid={!isValidAmount}>
-          <label>Monto</label>
-          <input
-            type="number"
-            min="1"
-            step="1"
-            onChange={amountChangeHandler}
-            value={amount}
-          />
-        </FormControl>
-        <FormControl invalid={!isValidDate}>
-          <label>Fecha</label>
-          <input
-            type="date"
-            min="2023-01-01"
-            max="2025-12-31"
-            onChange={dateChangeHandler}
-            value={date}
-          />
-        </FormControl>
-      </FormControls>
+  const errorHandler = () => {
+    setIsError(null)
+  }
 
-      <FormActions>
-        <Button type="submit">Agregar</Button>
-      </FormActions>
-    </form>
-  )
+  return (
+    <>
+      <form onSubmit={submitHandler}>
+        <div className={styles["new-expense-controls"]}>
+          <div
+            className={`${styles["new-expense-control"]} ${
+              !isTitleValid && styles.invalid
+            }`}
+          >
+            <label>Descripción</label>
+            <input
+              type="text"
+              value={title}
+              onChange={titleChangeHandler}
+              ref={titleRef}
+            />
+          </div>
+          <div
+            className={`${styles["new-expense-control"]} ${
+              !isAmountValid && styles.invalid
+            }`}
+          >
+            <label>Monto</label>
+            <input
+              type="number"
+              min="1"
+              step="1"
+              value={amount}
+              onChange={amountChangeHandler}
+            />
+          </div>
+          <div
+            className={`${styles["new-expense-control"]} ${
+              !isDateValid && styles.invalid
+            }`}
+          >
+            <label>Fecha</label>
+            <input
+              type="date"
+              min="2023-01-01"
+              max="2027-12-31"
+              value={date}
+              onChange={dateChangeHandler}
+            />
+          </div>
+        </div>
+        <div className={styles["new-expense-actions"]}>
+          <button type="submit">Agregar</button>
+        </div>
+      </form>
+      {error && (
+        <Modal
+          title={error.title}
+          message={error.message}
+          onConfirm={errorHandler}
+        />
+      )}
+    </>
+  );
 }
 
-export default ExpenseForm
+export default ExpenseForm;
